@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Mount /v1/files at $1 (default /files) via rclone WebDAV — mydrive
+# read+write, shared/ subdir read-only (gateway enforces).
+# Bearer token and gateway URL are auto-injected.
+set -euo pipefail
+MNT="${1:-/files}"
+mkdir -p "$MNT"
+exec rclone mount :webdav: "$MNT" \
+  --webdav-url "$KGPU_API_BASE/v1/files/" \
+  --webdav-vendor other \
+  --webdav-headers "Authorization,Bearer $KGPU_API_TOKEN" \
+  --vfs-cache-mode writes \
+  --vfs-read-chunk-size 16M \
+  --vfs-read-chunk-streams 4 \
+  --daemon

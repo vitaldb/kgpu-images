@@ -18,15 +18,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         unzip \
+        zstd \
     && curl -fsSL https://rclone.org/install.sh | bash \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/uv \
     && pip install --no-cache-dir duckdb pyarrow \
     && rm -rf /var/lib/apt/lists/*
 
-# Convenience wrapper — `kgpu-mount-shared [/mount/path]` runs the
-# canonical rclone HTTP mount against $KGPU_API_BASE/v1/files/shared/
-# with the auto-injected Bearer token.
+# Mount helpers — `kgpu-mount-shared [/path]` for the read-only HTTP
+# mount of the shared drive, `kgpu-mount-files [/path]` for the WebDAV
+# read+write mount of mydrive (shared/ subdir is RO inside it).
 COPY kgpu-mount-shared /usr/local/bin/kgpu-mount-shared
-RUN chmod +x /usr/local/bin/kgpu-mount-shared
+COPY kgpu-mount-files  /usr/local/bin/kgpu-mount-files
+RUN chmod +x /usr/local/bin/kgpu-mount-shared /usr/local/bin/kgpu-mount-files
 
 LABEL org.opencontainers.image.source="https://github.com/vitaldb/kgpu-images"
 LABEL org.opencontainers.image.description="kgpu.net — PyTorch + rclone + fuse + duckdb base image (arm64 / GB10)"

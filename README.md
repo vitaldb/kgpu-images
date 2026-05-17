@@ -12,7 +12,7 @@ to `ghcr.io/vitaldb/...`.
 
 | Image | Built from | Use |
 |---|---|---|
-| `ghcr.io/vitaldb/kgpu-pytorch:latest` | [kgpu-pytorch.Dockerfile](kgpu-pytorch.Dockerfile) | NGC PyTorch 24.10-py3 + rclone + fuse3 + duckdb + pyarrow, with `kgpu-mount-shared` helper |
+| `ghcr.io/vitaldb/kgpu-pytorch:latest` | [kgpu-pytorch.Dockerfile](kgpu-pytorch.Dockerfile) | NGC PyTorch 24.10-py3 + rclone + fuse3 + duckdb + pyarrow + uv + zstd, with `kgpu-mount-shared` (RO) and `kgpu-mount-files` (RW WebDAV) helpers |
 
 Pull is anonymous (the repo is public, so the package inherits public
 visibility).
@@ -29,9 +29,16 @@ curl -X POST -H "Authorization: Bearer $KGPU_API_TOKEN" \
 Inside the pod:
 
 ```bash
-kgpu-mount-shared             # mounts /shared via rclone HTTP
+kgpu-mount-shared             # /shared  (rclone HTTP, read-only)
+kgpu-mount-files              # /files   (rclone WebDAV, mydrive RW + shared/ RO subdir)
 ls /shared/datasets/ecg/
+echo hi > /files/scratch.txt  # writes through to your R2 prefix
 ```
+
+Don't drive your training loop's I/O through `/files` — see the
+[AGENTS.md "Filesystem write hygiene"](https://api.kgpu.net/AGENTS.md)
+section. Train on `/workspace` (ephemeral local), upload outputs as a
+single tar at the end.
 
 ## Building locally (rare)
 
