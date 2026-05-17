@@ -1,0 +1,49 @@
+name: build-base-image
+
+# Build & push the labgpu-pytorch base image to ghcr.io. Runs on:
+#   - any change to labgpu-pytorch.Dockerfile / lgpu-mount-shared (auto)
+#   - manual dispatch from the Actions tab
+#
+# Uses an arm64 runner (GB10 workers are arm64). Workflow's default
+# GITHUB_TOKEN has packages:write, so the image lands at
+# ghcr.io/vitaldb/labgpu-pytorch:<tag>. The repo is public, so the
+# resulting package is publicly pullable by K3s without imagePullSecrets.
+
+on:
+  push:
+    paths:
+      - "labgpu-pytorch.Dockerfile"
+      - "lgpu-mount-shared"
+      - ".github/workflows/build-base-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: labgpu-pytorch.Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/vitaldb/labgpu-pytorch:24.10-py3
+            ghcr.io/vitaldb/labgpu-pytorch:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

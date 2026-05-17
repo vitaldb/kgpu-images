@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Mount the lab shared drive at $1 (default /shared) via rclone HTTP.
+# Bearer token and gateway URL are auto-injected as env vars by labgpu.
+set -euo pipefail
+MNT="${1:-/shared}"
+mkdir -p "$MNT"
+exec rclone mount :http: "$MNT" \
+  --http-url "$LABGPU_API_BASE/v1/files/shared/" \
+  --http-headers "Authorization,Bearer $LABGPU_API_TOKEN" \
+  --read-only \
+  --vfs-cache-mode full \
+  --vfs-read-chunk-size 16M \
+  --vfs-read-chunk-streams 4 \
+  --daemon
