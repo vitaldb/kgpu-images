@@ -1,6 +1,6 @@
-# labgpu-images
+# kgpu-images
 
-Container images for [labgpu.com](https://labgpu.com) — pulled by the
+Container images for [kgpu.net](https://kgpu.net) — pulled by the
 lab's K3s cluster into rented GPU pods.
 
 The gateway source (FastAPI, K8s glue, R2 client, web dashboard) lives
@@ -12,7 +12,7 @@ to `ghcr.io/vitaldb/...`.
 
 | Image | Built from | Use |
 |---|---|---|
-| `ghcr.io/vitaldb/labgpu-pytorch:latest` | [labgpu-pytorch.Dockerfile](labgpu-pytorch.Dockerfile) | NGC PyTorch 24.10-py3 + rclone + fuse3 + duckdb + pyarrow, with `lgpu-mount-shared` helper |
+| `ghcr.io/vitaldb/kgpu-pytorch:latest` | [kgpu-pytorch.Dockerfile](kgpu-pytorch.Dockerfile) | NGC PyTorch 24.10-py3 + rclone + fuse3 + duckdb + pyarrow, with `kgpu-mount-shared` helper |
 
 Pull is anonymous (the repo is public, so the package inherits public
 visibility).
@@ -20,16 +20,16 @@ visibility).
 ## Renting with one of these images
 
 ```bash
-curl -X POST -H "Authorization: Bearer $LABGPU_API_TOKEN" \
+curl -X POST -H "Authorization: Bearer $KGPU_API_TOKEN" \
   -H "Content-Type: application/json" \
-  https://api.labgpu.com/v1/gpus \
-  -d '{"name":"exp","image":"ghcr.io/vitaldb/labgpu-pytorch:latest"}'
+  https://api.kgpu.net/v1/gpus \
+  -d '{"name":"exp","image":"ghcr.io/vitaldb/kgpu-pytorch:latest"}'
 ```
 
 Inside the pod:
 
 ```bash
-lgpu-mount-shared             # mounts /shared via rclone HTTP
+kgpu-mount-shared             # mounts /shared via rclone HTTP
 ls /shared/datasets/ecg/
 ```
 
@@ -40,8 +40,8 @@ need to iterate locally:
 
 ```bash
 docker buildx build --platform linux/arm64 \
-  -t ghcr.io/vitaldb/labgpu-pytorch:dev \
-  -f labgpu-pytorch.Dockerfile .
+  -t ghcr.io/vitaldb/kgpu-pytorch:dev \
+  -f kgpu-pytorch.Dockerfile .
 ```
 
 (arm64 because GB10 is arm64.)
