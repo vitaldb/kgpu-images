@@ -5,7 +5,7 @@ set -euo pipefail
 MNT="${1:-/shared}"
 mkdir -p "$MNT"
 exec rclone mount :http: "$MNT" \
-  --http-url "$KGPU_API_BASE/v1/files/shared/" \
+  --http-url "$KGPU_API_BASE/v1/shared/" \
   --http-headers "Authorization,Bearer $KGPU_API_TOKEN" \
   --read-only \
   --vfs-cache-mode full \
