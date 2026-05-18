@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# kgpu-bootstrap — runs at pod start. Mounts /shared (RO) and /files (RW),
+# then keeps the container alive. Mount failures are non-fatal so the pod
+# stays up for debugging.
+set -u
+log() { echo "[$(date +%H:%M:%S)] kgpu-bootstrap: $*"; }
+
+if [ -x /usr/local/bin/kgpu-mount-shared ]; then
+  if kgpu-mount-shared 2>&1 | sed 's/^/  shared: /'; then
+    log "mounted /shared"
+  else
+    log "WARN: /shared mount failed (continuing)"
+  fi
+fi
+
+if [ -x /usr/local/bin/kgpu-mount-files ]; then
+  if kgpu-mount-files 2>&1 | sed 's/^/  files: /'; then
+    log "mounted /files"
+  else
+    log "WARN: /files mount failed (continuing)"
+  fi
+fi
+
+log "ready"
+exec sleep infinity

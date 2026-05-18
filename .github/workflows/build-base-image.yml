@@ -15,6 +15,7 @@ on:
       - "kgpu-pytorch.Dockerfile"
       - "kgpu-mount-shared"
       - "kgpu-mount-files"
+      - "kgpu-bootstrap"
       - ".github/workflows/build-base-image.yml"
   workflow_dispatch:
 

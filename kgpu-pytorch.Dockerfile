@@ -28,9 +28,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Mount helpers — `kgpu-mount-shared [/path]` for the read-only HTTP
 # mount of the shared drive, `kgpu-mount-files [/path]` for the WebDAV
 # read+write mount of mydrive (shared/ subdir is RO inside it).
+# kgpu-bootstrap runs both at pod start, then idles — used as the pod's
+# main process by the gateway manifest so /shared + /files are present
+# the moment the rental becomes Ready.
 COPY kgpu-mount-shared /usr/local/bin/kgpu-mount-shared
 COPY kgpu-mount-files  /usr/local/bin/kgpu-mount-files
-RUN chmod +x /usr/local/bin/kgpu-mount-shared /usr/local/bin/kgpu-mount-files
+COPY kgpu-bootstrap    /usr/local/bin/kgpu-bootstrap
+RUN chmod +x /usr/local/bin/kgpu-mount-shared /usr/local/bin/kgpu-mount-files /usr/local/bin/kgpu-bootstrap
 
 LABEL org.opencontainers.image.source="https://github.com/vitaldb/kgpu-images"
 LABEL org.opencontainers.image.description="kgpu.net — PyTorch + rclone + fuse + duckdb base image (arm64 / GB10)"
