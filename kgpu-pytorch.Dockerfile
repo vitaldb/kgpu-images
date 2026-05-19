@@ -37,11 +37,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # image whose torch build supports numpy 2.x.
     && printf 'numpy<2\n' > /etc/pip-constraints.txt \
     && printf '[global]\nconstraint = /etc/pip-constraints.txt\n' > /etc/pip.conf \
-    # Pre-install the most common scientific stack alongside numpy<2
-    # so the user's `pip install wfdb / scipy / sklearn ...` is a
-    # no-op (Requirement already satisfied) rather than a version
-    # resolution that might fight the pin.
-    && pip install --no-cache-dir 'numpy<2' duckdb pyarrow wfdb \
+    # Pre-install the common scientific stack alongside numpy<2 so the
+    # user's `pip install ...` for any of these is a no-op
+    # ("Requirement already satisfied") rather than a version-resolution
+    # round that might fight the pin or pull a transitive numpy 2.x.
+    # Picked by SNUH research workload survey — wfdb (PhysioNet readers),
+    # vitaldb (lab's own SDK for .vital files), scipy/sklearn (signal +
+    # ML), pandas (tabular), matplotlib (most plots), seaborn (stats
+    # plots). Drop / extend as the workload shifts.
+    && pip install --no-cache-dir \
+         'numpy<2' \
+         duckdb pyarrow \
+         scipy scikit-learn pandas matplotlib seaborn \
+         wfdb vitaldb \
     && rm -rf /var/lib/apt/lists/*
 
 # Mount helpers — `kgpu-mount-shared [/path]` for the read-only HTTP
