@@ -99,8 +99,10 @@ RUN mkdir -p /etc/ssh/sshd_config.d \
         'UseDNS no' \
         'PrintMotd no' \
         'AcceptEnv LANG LC_*' \
-        'Subsystem sftp /usr/lib/openssh/sftp-server' \
         > /etc/ssh/sshd_config.d/kgpu.conf
+# `Subsystem sftp ...` 는 main sshd_config 에 이미 정의돼 있다 — drop-in
+# 에 또 쓰면 sshd 8.x+ 가 "Subsystem 'sftp' already defined." 로 fatal
+# (exit 255). main 에서 그대로 받음.
 
 ENTRYPOINT ["/usr/local/bin/kgpu-sshd-entrypoint"]
 
