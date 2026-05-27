@@ -36,6 +36,18 @@ echo "$KGPU_AUTHORIZED_KEY" > /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
 log "installed authorized_keys ($(wc -l < /root/.ssh/authorized_keys) keys)"
 
+# KGPU_* env 를 SSH session 에 전파.
+# sshd 가 PAM-disabled + non-interactive 모드에서 fork 한 user shell 은
+# PID 1 의 env 를 inherit 하지 않는다 (clean env). 사용자 코드가
+# `curl $KGPU_API_BASE/me -H "Authorization: Bearer $KGPU_API_TOKEN"`
+# 같은 호출을 SSH 에서 하려면 KGPU_* 가 보여야 함.
+# 표준 OpenSSH 메커니즘: ~/.ssh/environment + sshd_config 의
+# PermitUserEnvironment 짝. 우리 sshd_config drop-in 이 PermitUserEnvironment
+# KGPU_* 로 KGPU_ prefix 만 허용.
+env | grep '^KGPU_' > /root/.ssh/environment 2>/dev/null || true
+chmod 600 /root/.ssh/environment 2>/dev/null || true
+log "exported KGPU_* env to /root/.ssh/environment ($(wc -l < /root/.ssh/environment 2>/dev/null || echo 0) vars)"
+
 # Host key 보장 — apt postinst 가 이미 만들어 두지만 일부 base image (slim,
 # distroless 류) 는 비어 있을 수 있음. -A 는 missing 만 보충, 기존은 보존.
 ssh-keygen -A 2>/dev/null || log "WARN: ssh-keygen -A failed (continuing — host keys may already exist)"
