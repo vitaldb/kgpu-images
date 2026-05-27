@@ -99,6 +99,7 @@ RUN mkdir -p /etc/ssh/sshd_config.d \
         'UseDNS no' \
         'PrintMotd no' \
         'AcceptEnv LANG LC_*' \
+        'PermitUserEnvironment KGPU_*' \
         > /etc/ssh/sshd_config.d/kgpu.conf
 # `Subsystem sftp ...` 는 main sshd_config 에 이미 정의돼 있다 — drop-in
 # 에 또 쓰면 sshd 8.x+ 가 "Subsystem 'sftp' already defined." 로 fatal
