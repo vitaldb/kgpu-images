@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#
+# kgpu-sshd-entrypoint — kgpu v2 마이그레이션 Phase 1 산출물
+#
+# 새 (no-k3s) 모드의 ENTRYPOINT. NO_K3S_PLAN.md 참고.
+#
+# 동작 분기:
+#   1. KGPU_AUTHORIZED_KEY set → sshd 셋업 후 `exec sshd -D -p 2222`
+#      (per-port relay 모드. gateway 가 컨테이너 :2222 를 worker tailnet
+#      IP 의 alloc 된 포트로 publish, auroc nftables DNAT 가 외부 노출.)
+#   2. 안 set → `exec sleep infinity` (기존 k3s 모드 호환 — 이 경우
+#      k8s manifest 의 `command: ["sleep","infinity"]` 가 ENTRYPOINT 를
+#      override 하므로 사실 이 분기는 reach 되지 않지만, 일반 docker run
+#      으로 이미지를 띄울 때의 안전한 default).
+#
+# 컨테이너는 `--cap-drop ALL --security-opt no-new-privileges` 상태로
+# 실행되므로 sshd 가 :22 같은 privileged port 에 bind 못 한다. 그래서
+# 내부 포트는 2222. 외부 relay_port 는 gateway 가 동적으로 결정.
+#
+# OpenSSH 가 cap-drop / no-new-privileges 환경에서 안정적으로 동작하려면
+# UsePAM no, UseDNS no 가 필요 (PAM 의 setuid 모듈이 ENPRIV 에 막힘).
+# 이는 Dockerfile 의 /etc/ssh/sshd_config.d/kgpu.conf 에서 설정.
+
+set -u
+log() { echo "[$(date +%H:%M:%S)] kgpu-sshd-entrypoint: $*"; }
+
+if [ -z "${KGPU_AUTHORIZED_KEY:-}" ]; then
+  log "KGPU_AUTHORIZED_KEY unset — falling back to sleep infinity (k3s-compat default)"
+  exec sleep infinity
+fi
+
+# authorized_keys 설치
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+echo "$KGPU_AUTHORIZED_KEY" > /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+log "installed authorized_keys ($(wc -l < /root/.ssh/authorized_keys) keys)"
+
+# Host key 보장 — apt postinst 가 이미 만들어 두지만 일부 base image (slim,
+# distroless 류) 는 비어 있을 수 있음. -A 는 missing 만 보충, 기존은 보존.
+ssh-keygen -A 2>/dev/null || log "WARN: ssh-keygen -A failed (continuing — host keys may already exist)"
+
+# Host key fingerprint stderr 로 출력 — gateway 가 docker logs 로
+# 캡처해서 /v1/pods/{id}/sshkey 응답의 host_key_fingerprint 로 사용.
+for keyfile in /etc/ssh/ssh_host_ed25519_key /etc/ssh/ssh_host_ecdsa_key /etc/ssh/ssh_host_rsa_key; do
+  if [ -f "$keyfile" ]; then
+    fp=$(ssh-keygen -lf "${keyfile}.pub" 2>/dev/null || true)
+    [ -n "$fp" ] && log "host key: $fp"
+  fi
+done
+
+# /run/sshd 디렉토리 (Debian/Ubuntu sshd 요구).
+mkdir -p /run/sshd
+
+log "starting sshd on :2222"
+exec /usr/sbin/sshd -D -e -p 2222
