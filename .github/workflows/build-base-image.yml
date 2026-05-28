@@ -16,7 +16,6 @@ on:
       - "kgpu-mount-shared"
       - "kgpu-mount-files"
       - "kgpu-bootstrap"
-      - "kgpu-sshd-entrypoint"
       - ".github/workflows/build-base-image.yml"
   workflow_dispatch:
 
