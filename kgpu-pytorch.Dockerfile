@@ -27,6 +27,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         # works without `apt install` from inside the rental.
         # Alpha 2026-05-27 reconfirmed.
         iproute2 \
+        # openssh-sftp-server ships /usr/lib/openssh/sftp-server, the
+        # binary the kgpu bastion execs into the pod when a user mounts
+        # the workspace via sshfs (`sshfs ... -o
+        # sftp_server=/usr/lib/openssh/sftp-server`). Adds ~600 KiB but
+        # removes the only blocker for live local-folder editing.
+        openssh-sftp-server \
     && curl -fsSL https://rclone.org/install.sh | bash \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && mv /root/.local/bin/uv /usr/local/bin/uv \
