@@ -3,13 +3,20 @@
 #
 # Built automatically by .github/workflows/build-base-image.yml on any
 # push that touches this file. Published to:
-#   ghcr.io/vitaldb/kgpu-pytorch:24.10-py3
+#   ghcr.io/vitaldb/kgpu-pytorch:25.05-py3
 #   ghcr.io/vitaldb/kgpu-pytorch:latest
 #
 # Rent with:
 #   POST /v1/gpus  {"name":"exp","image":"ghcr.io/vitaldb/kgpu-pytorch:latest"}
+#
+# Base bumped 2026-06-07: 24.10-py3 (torch 2.5.0a0, CUDA 12.6, arch list
+# sm_70..sm_90+compute_90) → 25.05-py3 (torch 2.8.0a0, CUDA 12.9.0,
+# Blackwell sm_100/sm_120 prebuilt). The 24.10 base ran rtx5090 only via
+# PTX JIT from compute_90 — 0% GPU util for minutes during warmup
+# (alpha report 2026-06-07). 25.05 ships sm_120 kernels prebuilt, so
+# rtx5090 / B200 launch immediately.
 
-FROM nvcr.io/nvidia/pytorch:24.10-py3
+FROM nvcr.io/nvidia/pytorch:25.05-py3
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -36,31 +43,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && curl -fsSL https://rclone.org/install.sh | bash \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && mv /root/.local/bin/uv /usr/local/bin/uv \
-    # Pin numpy<2 system-wide via a pip constraint file. Reason:
-    # torch 2.5 (nv24.10) in this base image was compiled against
-    # numpy 1.x and aborts at import time on 2.x:
-    #   "A module compiled using NumPy 1.x cannot be run in NumPy 2.2.6"
-    # A single `pip install 'numpy<2' ...` at build time is *not*
-    # enough — alpha v4 caught the regression when the user ran
-    # `pip install wfdb` later inside the rental: wfdb's deps
-    # transitively dragged numpy back to 2.2.6 and torch broke. With
-    # a global constraint file pip respects `numpy<2` on every install
-    # the user runs, so wfdb / scipy / sklearn etc. all resolve to
-    # numpy-1.x-compatible releases automatically.
-    # Drop both the pin and the constraint when we rebase on a pytorch
-    # image whose torch build supports numpy 2.x.
-    && printf 'numpy<2\n' > /etc/pip-constraints.txt \
-    && printf '[global]\nconstraint = /etc/pip-constraints.txt\n' > /etc/pip.conf \
-    # Pre-install the common scientific stack alongside numpy<2 so the
-    # user's `pip install ...` for any of these is a no-op
-    # ("Requirement already satisfied") rather than a version-resolution
-    # round that might fight the pin or pull a transitive numpy 2.x.
+    # numpy<2 pin dropped 2026-06-07 with the 25.05 base bump — torch
+    # 2.8 (nv25.05) is built against numpy 2.x ABI, and the rest of
+    # the preinstalled scientific stack (scipy, sklearn, pandas, wfdb,
+    # vitaldb) all ship numpy-2-compatible wheels at current
+    # major versions. If a future user `pip install`s something that
+    # drags numpy back to 1.x, that's their breakage to resolve.
+    #
+    # Pre-install the common scientific stack so the user's
+    # `pip install ...` for any of these is a no-op ("Requirement
+    # already satisfied") rather than a version-resolution round.
     # Picked by SNUH research workload survey — wfdb (PhysioNet readers),
     # vitaldb (lab's own SDK for .vital files), scipy/sklearn (signal +
     # ML), pandas (tabular), matplotlib (most plots), seaborn (stats
     # plots). Drop / extend as the workload shifts.
     && pip install --no-cache-dir \
-         'numpy<2' \
          duckdb pyarrow \
          scipy scikit-learn pandas matplotlib seaborn \
          wfdb vitaldb \
