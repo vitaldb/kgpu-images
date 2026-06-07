@@ -87,7 +87,29 @@ jobs:
         run: |
           docker buildx imagetools create \
             -t ${{ env.IMAGE }}:latest \
-            -t ${{ env.IMAGE }}:24.10-py3 \
+            -t ${{ env.IMAGE }}:25.05-py3 \
             $(printf "${{ env.IMAGE }}@sha256:%s " *)
       - name: Verify
         run: docker buildx imagetools inspect ${{ env.IMAGE }}:latest
+
+      # Notify kgpu-gateway so the prepull DaemonSet rolls and every
+      # worker picks up the new digest in ~1 min instead of waiting for
+      # the next 10-min self-pull cycle. Endpoint:
+      # POST https://api.kgpu.net/v1/admin/prepull/restart (admin Bearer).
+      # `continue-on-error` because a transient gateway outage shouldn't
+      # red the build — the self-pull cycle in the DaemonSet is the
+      # safety net for that case.
+      - name: Trigger fleet prepull
+        continue-on-error: true
+        env:
+          KGPU_ADMIN_TOKEN: ${{ secrets.KGPU_ADMIN_TOKEN }}
+        run: |
+          if [ -z "${KGPU_ADMIN_TOKEN}" ]; then
+            echo "KGPU_ADMIN_TOKEN secret unset — skipping prepull restart"
+            exit 0
+          fi
+          curl -fsS --max-time 20 -X POST \
+            -H "Authorization: Bearer ${KGPU_ADMIN_TOKEN}" \
+            https://api.kgpu.net/v1/admin/prepull/restart \
+            && echo \
+            && echo "prepull DaemonSet rolled — workers will re-pull within ~1 min"
